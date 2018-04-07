@@ -1,0 +1,25 @@
+{
+  "name": "weka",
+  "author": {
+    "name": "Andrew Rothman",
+    "email": "andrew@andrewrothman.com",
+    "url": "http://andrewrothman.com"
+  },
+  "version": "0.1.0",
+  "scripts": {
+    "lint": "tslint --project ./",
+    "start-example:basic": "ts-node -r tsconfig-paths/register ./examples/basic/index.ts"
+  },
+  "dependencies": {
+    "koa": "^2.5.0",
+    "path-to-regexp": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/koa": "^2.0.45",
+    "@types/path-to-regexp": "^1.7.0",
+    "ts-node": "^5.0.1",
+    "tsconfig-paths": "^3.2.0",
+    "tslint": "^5.9.1",
+    "typescript": "^2.8.1"
+  }
+}
