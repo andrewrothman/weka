@@ -1,6 +1,6 @@
 type FuncResult = any;
 type FuncMeta = { name: string } & { [key: string]: any };
-type FuncHandler = (event: Event, ctx: any /* todo */) => FuncResult | Promise<FuncResult>;
+type FuncHandler<Context> = (event: Event, ctx: Context) => FuncResult | Promise<FuncResult>;
 
 export interface Event {
 	trigger: string;
@@ -8,29 +8,29 @@ export interface Event {
 	args: { [key: string]: any };
 }
 
-interface FuncDef {
+export interface FuncDef<Context> {
 	meta: FuncMeta;
-	handler: FuncHandler;
+	handler: FuncHandler<Context>;
 }
 
-interface FuncDefES6 {
+export interface FuncDefES6<Context> {
 	meta: FuncMeta;
-	default: FuncHandler;
+	default: FuncHandler<Context>;
 }
 
-type TrigDef = any & {
+type TrigDef<Context> = any & {
 	name: string;
-	setup: (weka: Weka, options: { [key: string]: any }) => object | undefined;
+	setup: (weka: Weka<Context>, options: { [key: string]: any }) => object | undefined;
 };
 
-type PreInvokeHandler = (event: Event, context: any) => boolean | Promise<boolean>;
+type PreInvokeHandler<Context> = (event: Event, context: Context) => boolean | Promise<boolean>;
 
-export default class Weka {
-	public readonly funcs: { [key: string]: FuncDef } = {};
-	public readonly trigs: { [key: string]: TrigDef } = {};
-	private preInvokeHandlers: PreInvokeHandler[] = [];
+export default class Weka<Context> {
+	public readonly funcs: { [key: string]: FuncDef<Context> } = {};
+	public readonly trigs: { [key: string]: TrigDef<Context> } = {};
+	private preInvokeHandlers: PreInvokeHandler<Context>[] = [];
 	
-	public registerFunction(funcDef: FuncDefES6) {
+	public registerFunction(funcDef: FuncDef<Context> | FuncDefES6<Context>) {
 		if (typeof funcDef !== "object") {
 			throw new Error("weka function registration parameter must be an object");
 		}
@@ -43,19 +43,19 @@ export default class Weka {
 			throw new Error("weka function registration parameter must include a \"name\" string meta field");
 		}
 		
-		if (typeof funcDef.default !== "function") {
-			throw new Error("weka function registration parameter must include a default function export field");
+		if (typeof (funcDef as FuncDef<Context>).handler !== "function" && typeof (funcDef as FuncDefES6<Context>).default !== "function") {
+			throw new Error("weka function registration parameter must include a default function export field or a \"handler\" field");
 		}
 		
 		const name = funcDef.meta.name;
 		
 		this.funcs[name] = {
 			meta: funcDef.meta,
-			handler: funcDef.default
+			handler: (funcDef as FuncDef<Context>).handler || (funcDef as FuncDefES6<Context>).default
 		};
 	}
 	
-	public registerTrigger(trigger: TrigDef, options: { [key: string]: any } = {}) {
+	public registerTrigger(trigger: TrigDef<Context>, options: { [key: string]: any } = {}) {
 		if (typeof trigger.name !== "string") {
 			throw new Error("weka trigger registration \"name\" field must be a string");
 		}
@@ -75,7 +75,7 @@ export default class Weka {
 			throw new Error("weka event invocation \"function\" field must be a string");
 		}
 		
-		const context: any = {};
+		const context: Context = {} as Context;
 		
 		for (const handler of this.preInvokeHandlers) {
 			const shouldContinue: boolean = await handler(event, context);
@@ -94,7 +94,7 @@ export default class Weka {
 		return this.funcs[event.function].handler(event, context);
 	}
 	
-	public addPreInvokeHandler(handler: PreInvokeHandler) {
+	public addPreInvokeHandler(handler: PreInvokeHandler<Context>) {
 		this.preInvokeHandlers.push(handler);
 	}
 }

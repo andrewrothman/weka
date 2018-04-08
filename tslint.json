@@ -16,7 +16,8 @@
         "one-line": false,
         "max-line-length": false,
         "no-trailing-whitespace": [ true, "ignore-blank-lines" ],
-        "ordered-imports": false
+        "ordered-imports": false,
+        "array-type": false
     },
     "rulesDirectory": []
 }

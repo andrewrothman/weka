@@ -1,6 +1,6 @@
 import "mocha";
 import { expect } from "chai";
-import Weka, { Event } from "@src";
+import Weka, { Event, FuncDef, FuncDefES6 } from "@src";
 
 // todo: ensure errors are being thrown
 
@@ -24,6 +24,28 @@ describe("Invoke", () => {
 			args: {}
 		});
 		
+		expect(result).to.equal("hello");
+	});
+	
+	it("returns the response value of a basic lambda with handler field", async () => {
+		const funcDef = {
+			meta: {
+				name: "basic"
+			},
+			handler: () => {
+				return "hello";
+			}
+		};
+
+		const weka = new Weka();
+		weka.registerFunction(funcDef);
+
+		const result = await weka.invoke({
+			trigger: "default",
+			function: "basic",
+			args: {}
+		});
+
 		expect(result).to.equal("hello");
 	});
 	
@@ -56,7 +78,7 @@ describe("Invoke", () => {
 			suffix: string;
 		}
 		
-		const funcDef = {
+		const funcDef: FuncDefES6<EchoContext> = {
 			meta: {
 				name: "echo"
 			},
@@ -65,7 +87,7 @@ describe("Invoke", () => {
 			}
 		};
 		
-		const weka = new Weka();
+		const weka = new Weka<EchoContext>();
 		weka.registerFunction(funcDef);
 		
 		weka.addPreInvokeHandler((event: Event, context: EchoContext) => {
@@ -81,6 +103,6 @@ describe("Invoke", () => {
 			}
 		});
 		
-		// expect(result).to.equal("hey there!");
+		expect(result).to.equal("hey there!");
 	});
 });
