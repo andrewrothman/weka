@@ -9,6 +9,7 @@
   "version": "0.1.0",
   "scripts": {
     "lint": "tslint --project ./",
+    "test": "mocha -r ts-node/register -r tsconfig-paths/register tests/*",
     "start-example:basic": "ts-node -r tsconfig-paths/register ./examples/basic/index.ts"
   },
   "dependencies": {
@@ -16,8 +17,12 @@
     "path-to-regexp": "^2.2.0"
   },
   "devDependencies": {
+    "@types/chai": "^4.1.2",
     "@types/koa": "^2.0.45",
+    "@types/mocha": "^5.0.0",
     "@types/path-to-regexp": "^1.7.0",
+    "chai": "^4.1.2",
+    "mocha": "^5.0.5",
     "ts-node": "^5.0.1",
     "tsconfig-paths": "^3.2.0",
     "tslint": "^5.9.1",

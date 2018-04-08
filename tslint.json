@@ -15,7 +15,8 @@
         "no-console": false,
         "one-line": false,
         "max-line-length": false,
-        "no-trailing-whitespace": [ true, "ignore-blank-lines" ]
+        "no-trailing-whitespace": [ true, "ignore-blank-lines" ],
+        "ordered-imports": false
     },
     "rulesDirectory": []
 }

@@ -23,9 +23,12 @@ type TrigDef = any & {
 	setup: (weka: Weka, options: { [key: string]: any }) => object | undefined;
 };
 
+type PreInvokeHandler = (event: Event, context: any) => boolean | Promise<boolean>;
+
 export default class Weka {
 	public readonly funcs: { [key: string]: FuncDef } = {};
 	public readonly trigs: { [key: string]: TrigDef } = {};
+	private preInvokeHandlers: PreInvokeHandler[] = [];
 	
 	public registerFunction(funcDef: FuncDefES6) {
 		if (typeof funcDef !== "object") {
@@ -63,7 +66,7 @@ export default class Weka {
 		return returnValue;
 	}
 	
-	public invoke(event: Event) {
+	public async invoke(event: Event) {
 		if (typeof event.trigger !== "string") {
 			throw new Error("weka event invocation \"trigger\" field must be a string");
 		}
@@ -72,13 +75,26 @@ export default class Weka {
 			throw new Error("weka event invocation \"function\" field must be a string");
 		}
 		
+		const context: any = {};
+		
+		for (const handler of this.preInvokeHandlers) {
+			const shouldContinue: boolean = await handler(event, context);
+			if (shouldContinue === false) {
+				// do not invoke
+				return;
+			}
+		}
+		
 		const func = this.funcs[event.function];
 		
 		if (func === undefined) {
 			throw new Error(`could not invoke event because no function named "${event.function}" was registered`);
 		}
 		
-		// todo: deal with context
-		return this.funcs[event.function].handler(event, undefined);
+		return this.funcs[event.function].handler(event, context);
+	}
+	
+	public addPreInvokeHandler(handler: PreInvokeHandler) {
+		this.preInvokeHandlers.push(handler);
 	}
 }
