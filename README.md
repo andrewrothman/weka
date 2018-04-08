@@ -2,7 +2,7 @@
 
 A JavaScript lambda function supervisor.
 
-Please note that Weka is NOT related to AWS Lambda, FaaS platforms, or serverless applications.
+**Please note** that Weka is NOT related to AWS Lambda, FaaS platforms, or serverless applications.
 Instead, the goal of Weka is to introduce the benefits of self-contained functions to traditional
 monolithic JavaScript applications.
 
@@ -42,7 +42,7 @@ export default function (event: Event) {
 }
 ```
 
-`index.js`
+`index.ts`
 
 ```typescript
 import Weka from "weka";
@@ -68,7 +68,7 @@ Triggers allow for external code to invoke your functions, such as the included 
 
 By adding a few lines of code in our function meta:
 
-`greeter.js`
+`greeter.ts`
 
 ```typescript
 export const meta = {
@@ -86,7 +86,7 @@ export default function (event: Event) {
 
 And registering the http trigger:
 
-`index.js`
+`index.ts`
 
 ```typescript
 import Weka from "weka";
