@@ -1,6 +1,6 @@
-type FuncResult = any;
-type FuncMeta = { name: string } & { [key: string]: any };
-type FuncHandler<Context> = (event: WekaEvent, ctx: Context) => FuncResult | Promise<FuncResult>;
+export type WekaFuncResult = any;
+export type WekaFuncMeta = { name: string } & { [key: string]: any };
+export type WekaFuncHandler<Context> = (event: WekaEvent, ctx: Context) => WekaFuncResult | Promise<WekaFuncResult>;
 
 export interface WekaEvent {
 	trigger: string;
@@ -9,26 +9,26 @@ export interface WekaEvent {
 }
 
 export interface WekaFuncDef<Context> {
-	meta: FuncMeta;
-	handler: FuncHandler<Context>;
+	meta: WekaFuncMeta;
+	handler: WekaFuncHandler<Context>;
 }
 
 export interface WekaFuncDefES6<Context> {
-	meta: FuncMeta;
-	default: FuncHandler<Context>;
+	meta: WekaFuncMeta;
+	default: WekaFuncHandler<Context>;
 }
 
-type TrigDef<Context> = any & {
+export type WekaTrigDef<Context> = any & {
 	name: string;
 	setup: (weka: Weka<Context>, options: { [key: string]: any }) => object | undefined;
 };
 
-type PreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
+export type WekaPreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
 
 export default class Weka<Context> {
 	public readonly funcs: { [key: string]: WekaFuncDef<Context> } = {};
-	public readonly trigs: { [key: string]: TrigDef<Context> } = {};
-	private preInvokeHandlers: PreInvokeHandler<Context>[] = [];
+	public readonly trigs: { [key: string]: WekaTrigDef<Context> } = {};
+	private preInvokeHandlers: WekaPreInvokeHandler<Context>[] = [];
 	
 	public registerFunction(funcDef: WekaFuncDef<Context> | WekaFuncDefES6<Context>) {
 		if (typeof funcDef !== "object") {
@@ -55,7 +55,7 @@ export default class Weka<Context> {
 		};
 	}
 	
-	public registerTrigger(trigger: TrigDef<Context>, options: { [key: string]: any } = {}) {
+	public registerTrigger(trigger: WekaTrigDef<Context>, options: { [key: string]: any } = {}) {
 		if (typeof trigger.name !== "string") {
 			throw new Error("weka trigger registration \"name\" field must be a string");
 		}
@@ -94,7 +94,7 @@ export default class Weka<Context> {
 		return this.funcs[event.function].handler(event, context);
 	}
 	
-	public addPreInvokeHandler(handler: PreInvokeHandler<Context>) {
+	public addPreInvokeHandler(handler: WekaPreInvokeHandler<Context>) {
 		this.preInvokeHandlers.push(handler);
 	}
 }

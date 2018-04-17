@@ -5,12 +5,14 @@
     "email": "andrew@andrewrothman.com",
     "url": "http://andrewrothman.com"
   },
+  "main": "build/lib/index.js",
   "license": "MIT",
   "version": "0.1.0",
   "scripts": {
     "lint": "tslint --project ./",
     "test": "mocha -r ts-node/register -r tsconfig-paths/register tests/*",
-    "start-example:basic": "ts-node -r tsconfig-paths/register ./examples/basic/index.ts"
+    "start-example:basic": "ts-node -r tsconfig-paths/register ./examples/basic/index.ts",
+    "build": "tsc"
   },
   "dependencies": {
     "koa": "^2.5.0",
