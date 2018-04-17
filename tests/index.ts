@@ -1,6 +1,6 @@
 import "mocha";
 import { expect } from "chai";
-import Weka, { Event, FuncDef, FuncDefES6 } from "@src";
+import Weka, { WekaEvent, WekaFuncDef, WekaFuncDefES6 } from "@src";
 
 // todo: ensure errors are being thrown
 
@@ -78,11 +78,11 @@ describe("Invoke", () => {
 			suffix: string;
 		}
 		
-		const funcDef: FuncDefES6<EchoContext> = {
+		const funcDef: WekaFuncDefES6<EchoContext> = {
 			meta: {
 				name: "echo"
 			},
-			default: (event: Event, context: EchoContext) => {
+			default: (event: WekaEvent, context: EchoContext) => {
 				return event.args.value + context.suffix;
 			}
 		};
@@ -90,7 +90,7 @@ describe("Invoke", () => {
 		const weka = new Weka<EchoContext>();
 		weka.registerFunction(funcDef);
 		
-		weka.addPreInvokeHandler((event: Event, context: EchoContext) => {
+		weka.addPreInvokeHandler((event: WekaEvent, context: EchoContext) => {
 			context.suffix = "!";
 			return true;
 		});

@@ -1,4 +1,4 @@
-import { Event } from "@src";
+import { WekaEvent } from "@src";
 
 export const meta = {
 	name: "greeter",
@@ -8,6 +8,6 @@ export const meta = {
 	}
 };
 
-export default function (event: Event) {
+export default function (event: WekaEvent) {
 	return `Hello, ${event.args.recipient}!`;
 }

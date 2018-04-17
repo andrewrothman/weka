@@ -8,7 +8,7 @@ const DEFAULT_HTTP_PORT: number = 3000;
 export default {
 	name: TRIGGER_NAME,
 	app: undefined as any as Koa,
-	setup(weka: Weka, options: { [key: string]: any }): object {
+	setup(weka: Weka<any>, options: { [key: string]: any }): object {
 		const port = options.port || DEFAULT_HTTP_PORT;
 		
 		if (typeof port !== "number") {
