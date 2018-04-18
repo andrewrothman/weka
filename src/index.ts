@@ -1,3 +1,8 @@
+import * as chokidar from "chokidar";
+import * as callsite from "callsite";
+import * as path from "path";
+const warmRequire = require("warm-require");
+
 export type WekaFuncResult = any;
 export type WekaFuncMeta = { name: string } & { [key: string]: any };
 export type WekaFuncHandler<Context> = (event: WekaEvent, ctx: Context) => WekaFuncResult | Promise<WekaFuncResult>;
@@ -13,6 +18,11 @@ export interface WekaFuncDef<Context> {
 	handler: WekaFuncHandler<Context>;
 }
 
+interface InternalWekaFunctionDef<Context> extends WekaFuncDef<Context> {
+	path?: string;
+	isWatching: boolean;
+}
+
 export interface WekaFuncDefES6<Context> {
 	meta: WekaFuncMeta;
 	default: WekaFuncHandler<Context>;
@@ -26,9 +36,11 @@ export type WekaTrigDef<Context> = any & {
 export type WekaPreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
 
 export default class Weka<Context> {
-	public readonly funcs: { [key: string]: WekaFuncDef<Context> } = {};
-	public readonly trigs: { [key: string]: WekaTrigDef<Context> } = {};
+	private funcs: { [key: string]: InternalWekaFunctionDef<Context> } = {};
+	private trigs: { [key: string]: WekaTrigDef<Context> } = {};
 	private preInvokeHandlers: WekaPreInvokeHandler<Context>[] = [];
+	
+	private watcher: chokidar.FSWatcher | undefined = undefined;
 	
 	public registerFunction(funcDef: WekaFuncDef<Context> | WekaFuncDefES6<Context>) {
 		if (typeof funcDef !== "object") {
@@ -51,8 +63,61 @@ export default class Weka<Context> {
 		
 		this.funcs[name] = {
 			meta: funcDef.meta,
-			handler: (funcDef as WekaFuncDef<Context>).handler || (funcDef as WekaFuncDefES6<Context>).default
+			handler: (funcDef as WekaFuncDef<Context>).handler || (funcDef as WekaFuncDefES6<Context>).default,
+			path: undefined,
+			isWatching: false
 		};
+	}
+	
+	private setupWatcherHandler(watcher: chokidar.FSWatcher) {
+		watcher.on("ready", () => {
+			watcher.on("all", (eventType: string, changedPath: string) => {
+				console.log(changedPath);
+				delete require.cache[changedPath];
+				const newFuncDef = require(changedPath);
+				const newName = newFuncDef.meta.name;
+
+				this.funcs[newName] = {
+					meta: newFuncDef.meta,
+					handler: (newFuncDef as WekaFuncDef<Context>).handler || (newFuncDef as WekaFuncDefES6<Context>).default,
+					path: changedPath,
+					isWatching: true
+				};
+			});
+		});
+	}
+	
+	public registerFuncFromPath(filePath: string, shouldWatch: boolean = true): void {
+		// todo: ensure the path points to a single file
+		
+		const stack = callsite();
+		const requester = stack[1].getFileName();
+		
+		const finalModulePath: string = path.resolve(path.dirname(requester), filePath);
+		const finalFilePath: string = require.resolve(finalModulePath);
+		
+		const funcDef = require(finalModulePath);
+		
+		if (this.watcher === undefined) {
+			this.watcher = chokidar.watch([finalFilePath]);
+			this.setupWatcherHandler(this.watcher);
+		}
+		else {
+			this.watcher.add(finalFilePath);
+		}
+		
+		const name = funcDef.meta.name;
+
+		this.funcs[name] = {
+			meta: funcDef.meta,
+			handler: (funcDef as WekaFuncDef<Context>).handler || (funcDef as WekaFuncDefES6<Context>).default,
+			path: finalFilePath,
+			isWatching: true
+		};
+	}
+	
+	public registerFuncsFromPath(dirPath: string, shouldWatch: boolean = true): void {
+		// todo: ensure the path points to a directory
 	}
 	
 	public registerTrigger(trigger: WekaTrigDef<Context>, options: { [key: string]: any } = {}) {
