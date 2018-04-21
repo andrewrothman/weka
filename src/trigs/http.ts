@@ -18,7 +18,7 @@ export default {
 		this.app = new Koa();
 		
 		this.app.use(async (ctx: Koa.Context) => {
-			for (const [funcName, funcDef] of Object.entries(weka.funcs)) {
+			for (const funcDef of weka.getAllFunctions()) {
 				if (typeof funcDef.meta.http !== "object") {
 					continue;
 				}
@@ -44,7 +44,7 @@ export default {
 					
 					const funcRes = await weka.invoke({
 						trigger: TRIGGER_NAME,
-						function: funcName,
+						function: funcDef.meta.name,
 						args
 					});
 					

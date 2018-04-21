@@ -1,31 +1,12 @@
-import * as chokidar from "chokidar";
 import * as callsite from "callsite";
 import * as path from "path";
-const warmRequire = require("warm-require");
-
-export type WekaFuncResult = any;
-export type WekaFuncMeta = { name: string } & { [key: string]: any };
-export type WekaFuncHandler<Context> = (event: WekaEvent, ctx: Context) => WekaFuncResult | Promise<WekaFuncResult>;
+import { Watcher } from "@src/watcher";
+import FunctionStore, { WekaFuncMeta, WekaFuncHandler, WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "@src/func_store";
 
 export interface WekaEvent {
 	trigger: string;
 	function: string;
 	args: { [key: string]: any };
-}
-
-export interface WekaFuncDef<Context> {
-	meta: WekaFuncMeta;
-	handler: WekaFuncHandler<Context>;
-}
-
-interface InternalWekaFunctionDef<Context> extends WekaFuncDef<Context> {
-	path?: string;
-	isWatching: boolean;
-}
-
-export interface WekaFuncDefES6<Context> {
-	meta: WekaFuncMeta;
-	default: WekaFuncHandler<Context>;
 }
 
 export type WekaTrigDef<Context> = any & {
@@ -35,12 +16,22 @@ export type WekaTrigDef<Context> = any & {
 
 export type WekaPreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
 
+export interface WekaOptions {
+	watchedPaths?: string[];
+}
+
 export default class Weka<Context> {
-	private funcs: { [key: string]: InternalWekaFunctionDef<Context> } = {};
 	private trigs: { [key: string]: WekaTrigDef<Context> } = {};
 	private preInvokeHandlers: WekaPreInvokeHandler<Context>[] = [];
 	
-	private watcher: chokidar.FSWatcher | undefined = undefined;
+	private funcStore: FunctionStore<Context> = new FunctionStore();
+	private watcher: Watcher = new Watcher({ onWatchedPathChanged: this.onWatchedPathChanged.bind(this) });
+	
+	constructor(options: WekaOptions) {
+		if (options.watchedPaths !== undefined) {
+			this.watcher.startWatchingPaths(options.watchedPaths);
+		}
+	}
 	
 	public registerFunction(funcDef: WekaFuncDef<Context> | WekaFuncDefES6<Context>) {
 		if (typeof funcDef !== "object") {
@@ -59,63 +50,39 @@ export default class Weka<Context> {
 			throw new Error("weka function registration parameter must include a default function export field or a \"handler\" field");
 		}
 		
-		const name = funcDef.meta.name;
-		
-		this.funcs[name] = {
+		const internalFucDef: InternalWekaFunctionDef<Context> = {
 			meta: funcDef.meta,
-			handler: (funcDef as WekaFuncDef<Context>).handler || (funcDef as WekaFuncDefES6<Context>).default,
+			handler: FunctionStore.getFunctionHandlerFromDef(funcDef),
 			path: undefined,
 			isWatching: false
 		};
-	}
-	
-	private setupWatcherHandler(watcher: chokidar.FSWatcher) {
-		watcher.on("ready", () => {
-			watcher.on("all", (eventType: string, changedPath: string) => {
-				console.log(changedPath);
-				delete require.cache[changedPath];
-				const newFuncDef = require(changedPath);
-				const newName = newFuncDef.meta.name;
-
-				this.funcs[newName] = {
-					meta: newFuncDef.meta,
-					handler: (newFuncDef as WekaFuncDef<Context>).handler || (newFuncDef as WekaFuncDefES6<Context>).default,
-					path: changedPath,
-					isWatching: true
-				};
-			});
-		});
+		
+		this.funcStore.addFunction(internalFucDef);
 	}
 	
 	public registerFuncFromPath(filePath: string, shouldWatch: boolean = true): void {
 		// todo: ensure the path points to a single file
-		
+
 		const stack = callsite();
 		const requester = stack[1].getFileName();
-		
+
 		const finalModulePath: string = path.resolve(path.dirname(requester), filePath);
 		const finalFilePath: string = require.resolve(finalModulePath);
-		
+
 		const funcDef = require(finalModulePath);
 		
-		if (this.watcher === undefined) {
-			this.watcher = chokidar.watch([finalFilePath]);
-			this.setupWatcherHandler(this.watcher);
-		}
-		else {
-			this.watcher.add(finalFilePath);
-		}
-		
-		const name = funcDef.meta.name;
+		this.watcher.startWatchingPaths([finalFilePath]);
 
-		this.funcs[name] = {
+		const internalFuncDef: InternalWekaFunctionDef<Context> = {
 			meta: funcDef.meta,
-			handler: (funcDef as WekaFuncDef<Context>).handler || (funcDef as WekaFuncDefES6<Context>).default,
+			handler: FunctionStore.getFunctionHandlerFromDef(funcDef),
 			path: finalFilePath,
 			isWatching: true
 		};
+		
+		this.funcStore.addFunction(internalFuncDef);
 	}
-	
+
 	public registerFuncsFromPath(dirPath: string, shouldWatch: boolean = true): void {
 		// todo: ensure the path points to a directory
 	}
@@ -140,26 +107,58 @@ export default class Weka<Context> {
 			throw new Error("weka event invocation \"function\" field must be a string");
 		}
 		
-		const context: Context = {} as Context;
+		const func = this.funcStore.getFunction(event.function);
 		
+		const context: Context = {} as Context;
+		if (await this.runPreInvokeHandlers(event, context) === false) {
+			return;
+		}
+		
+		return func.handler(event, context);
+	}
+	
+	public async runPreInvokeHandlers(event: WekaEvent, context: Context): Promise<boolean> {
 		for (const handler of this.preInvokeHandlers) {
 			const shouldContinue: boolean = await handler(event, context);
 			if (shouldContinue === false) {
+				
 				// do not invoke
-				return;
+				return false;
 			}
 		}
 		
-		const func = this.funcs[event.function];
-		
-		if (func === undefined) {
-			throw new Error(`could not invoke event because no function named "${event.function}" was registered`);
-		}
-		
-		return this.funcs[event.function].handler(event, context);
+		return true;
 	}
 	
 	public addPreInvokeHandler(handler: WekaPreInvokeHandler<Context>) {
 		this.preInvokeHandlers.push(handler);
+	}
+	
+	private onWatchedPathChanged(eventType: string, changedPath: string) {
+		const func: InternalWekaFunctionDef<Context> | undefined = this.funcStore.findByPath(changedPath);
+		
+		if (func !== undefined) {
+			console.log("bursting", func.path!);
+			
+			this.funcStore.burstFunction(func);
+		}
+		else {
+			console.log("bursting", changedPath);
+			
+			// burst the cache for this file
+			delete require.cache[require.resolve(changedPath)];
+			
+			console.log("bursting all functions");
+			
+			// if the file was not found, invalidate the cache for all functions (in case the file was a dependency of one of the functions)
+			this.funcStore.burstAllFunctions();
+		}
+	}
+	
+	// todo: change this to getFunctions(callback(meta: WekaFuncMeta) => true | false): InternalWekaFuncDef
+	// and use in koa
+	// or, even, invoke by name and invokeWhere by meta, but this would be a larger architectural change
+	public getAllFunctions(): InternalWekaFunctionDef<Context>[] {
+		return this.funcStore.getAll();
 	}
 }
