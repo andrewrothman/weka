@@ -5,10 +5,15 @@ import * as pathToRegexp from "path-to-regexp";
 const TRIGGER_NAME: string = "http";
 const DEFAULT_HTTP_PORT: number = 3000;
 
+export interface WekaHttpOptions {
+	port?: number;
+	healthEndpointEnabled?: boolean;
+}
+
 export default {
 	name: TRIGGER_NAME,
 	app: undefined as any as Koa,
-	setup(weka: Weka<any>, options: { [key: string]: any }): object {
+	setup(weka: Weka<any>, options: WekaHttpOptions): object {
 		const port = options.port || DEFAULT_HTTP_PORT;
 		
 		if (typeof port !== "number") {
@@ -18,6 +23,16 @@ export default {
 		this.app = new Koa();
 		
 		this.app.use(async (ctx: Koa.Context) => {
+			// if the health endpoint is enabled, then return a 200 on the "/healthz" path
+			// this is a docker and kubernetes standard that was put in practice by Google
+			if (options.healthEndpointEnabled !== false) {
+				if (ctx.path === "/healthz") {
+					ctx.status = 200;
+					ctx.res.end("OK");
+					return;
+				}
+			}
+			
 			for (const funcDef of weka.getAllFunctions()) {
 				if (typeof funcDef.meta.http !== "object") {
 					continue;
