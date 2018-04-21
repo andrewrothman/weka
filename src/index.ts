@@ -27,9 +27,11 @@ export default class Weka<Context> {
 	private funcStore: FunctionStore<Context> = new FunctionStore();
 	private watcher: Watcher = new Watcher({ onWatchedPathChanged: this.onWatchedPathChanged.bind(this) });
 	
-	constructor(options: WekaOptions) {
-		if (options.watchedPaths !== undefined) {
-			this.watcher.startWatchingPaths(options.watchedPaths);
+	constructor(options?: WekaOptions) {
+		if (options !== undefined) {
+			if (options.watchedPaths !== undefined) {
+				this.watcher.startWatchingPaths(options.watchedPaths);
+			}
 		}
 	}
 	
