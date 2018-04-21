@@ -89,6 +89,10 @@ export default class Weka<Context> {
 		// todo: ensure the path points to a directory
 	}
 	
+	public unregisterFunction(funcName: string) {
+		this.funcStore.removeFunction(funcName);
+	}
+	
 	public registerTrigger(trigger: WekaTrigDef<Context>, options: { [key: string]: any } = {}) {
 		if (typeof trigger.name !== "string") {
 			throw new Error("weka trigger registration \"name\" field must be a string");

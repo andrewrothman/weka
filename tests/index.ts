@@ -1,6 +1,10 @@
 import "mocha";
 import { expect } from "chai";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
 import Weka, { WekaEvent, WekaFuncDef, WekaFuncDefES6 } from "@src";
+
+chai.use(chaiAsPromised);
 
 // todo: ensure errors are being thrown
 
@@ -54,7 +58,7 @@ describe("Invoke", () => {
 			meta: {
 				name: "echo"
 			},
-			default: (event: Event) => {
+			default: (event: WekaEvent) => {
 				return event.args.value;
 			}
 		};
@@ -104,5 +108,43 @@ describe("Invoke", () => {
 		});
 		
 		expect(result).to.equal("hey there!");
+	});
+	
+	it("unregisters a previously-registered function", async () => {
+		interface EchoContext {
+			suffix: string;
+		}
+
+		const funcDef: WekaFuncDefES6<EchoContext> = {
+			meta: {
+				name: "echo"
+			},
+			default: (event: WekaEvent) => {
+				return event.args.value;
+			}
+		};
+
+		const weka = new Weka<EchoContext>();
+		weka.registerFunction(funcDef);
+
+		const result = await weka.invoke({
+			trigger: "default",
+			function: "echo",
+			args: {
+				value: "hey there"
+			}
+		});
+
+		expect(result).to.equal("hey there");
+		
+		weka.unregisterFunction("echo");
+
+		return (expect(weka.invoke({
+			trigger: "default",
+			function: "echo",
+			args: {
+				value: "hey there"
+			}
+		})).to.be as any).rejected;
 	});
 });

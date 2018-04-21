@@ -68,7 +68,15 @@ export default class FunctionStore<Context> {
 	}
 	
 	public getAllWithSpecifiedPath(): InternalWekaFunctionDef<Context>[] {
-		return this.getAll().filter(f => f.path !== undefined);
+		return this.getAll().filter((f: InternalWekaFunctionDef<Context>) => f.path !== undefined);
+	}
+	
+	public removeFunction(name: string) {
+		if (this.funcs[name] === undefined) {
+			throw new Error(`weka could not remove function named "${name}" because it was not found in the function store`);
+		}
+		
+		delete this.funcs[name];
 	}
 	
 	public burstFunction(funcDef: InternalWekaFunctionDef<Context>): void {
