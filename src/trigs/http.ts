@@ -48,22 +48,21 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 				}
 
 				const funcHttpMethod: string = (funcDef.meta.http.method || "").toLowerCase();
-				const funcHttpUrl: string = (funcDef.meta.http.url || "");
+				const funcHttpPath: string = (funcDef.meta.http.path || "");
 
-				const reqUrlKeys: pathToRegexp.Key[] = [];
-				const reqUrlRegex = pathToRegexp(funcHttpUrl, reqUrlKeys);
+				const reqPathKeys: pathToRegexp.Key[] = [];
+				const reqPathRegex = pathToRegexp(funcHttpPath, reqPathKeys);
 
-				const reqHttpUrl = ctx.request.url;
+				const reqHttpPath = ctx.request.url;
 
-				if (reqHttpUrl.match(reqUrlRegex)) {
-					const reqUrlValues = reqUrlRegex.exec(reqHttpUrl)!;
+				if (reqHttpPath.match(reqPathRegex)) {
+					const reqPathValues = reqPathRegex.exec(reqHttpPath)!;
 
 					const args: { [key: string]: any } = {};
 
-					for (let i = 0; i < reqUrlKeys.length; i++) {
-						const reqUrlKey = reqUrlKeys[i];
-
-						args[reqUrlKey.name] = reqUrlValues[i + 1];
+					for (let i = 0; i < reqPathKeys.length; i++) {
+						const reqPathKey: pathToRegexp.Key = reqPathKeys[i];
+						args[reqPathKey.name] = reqPathValues[i + 1];
 					}
 
 					const funcRes = await weka.invoke({

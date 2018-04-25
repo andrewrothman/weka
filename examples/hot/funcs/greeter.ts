@@ -6,7 +6,7 @@ export const meta = {
 	name: "greeter",
 	http: {
 		method: "GET",
-		url: "/greet/:recipient"
+		path: "/greet/:recipient"
 	}
 };
 
