@@ -13,14 +13,15 @@ export interface WekaEvent {
 	args: { [key: string]: any };
 }
 
-export type WekaTrigDef<Context> = {
+export interface WekaTrigDef<Context> {
 	attach(weka: Weka<Context>): WekaTriggerAttachInfo;
-};
+}
 
 export type WekaPreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
 
 export interface WekaOptions {
 	watchedPaths?: string[];
+	hotReloadEnabled?: boolean;
 }
 
 export default class Weka<Context> {
@@ -30,9 +31,15 @@ export default class Weka<Context> {
 	private funcStore: FunctionStore<Context> = new FunctionStore();
 	private watcher: Watcher = new Watcher({ onWatchedPathChanged: this.onWatchedPathChanged.bind(this) });
 	
+	private hotReloadEnabled: boolean = process.env.NODE_ENV === undefined || process.env.NODE_ENV === "" || process.env.NODE_ENV === "development";
+	
 	constructor(options?: WekaOptions) {
 		if (options !== undefined) {
-			if (options.watchedPaths !== undefined) {
+			if (options.hotReloadEnabled !== undefined) {
+				this.hotReloadEnabled = options.hotReloadEnabled;
+			}
+			
+			if (options.watchedPaths !== undefined && this.hotReloadEnabled) {
 				this.watcher.startWatchingPaths(options.watchedPaths);
 			}
 		}
@@ -76,7 +83,9 @@ export default class Weka<Context> {
 
 		const funcDef = require(finalModulePath);
 		
-		this.watcher.startWatchingPaths([finalFilePath]);
+		if (this.hotReloadEnabled) {
+			this.watcher.startWatchingPaths([finalFilePath]);
+		}
 
 		const internalFuncDef: InternalWekaFunctionDef<Context> = {
 			meta: funcDef.meta,
