@@ -5,5 +5,5 @@ const weka = new Weka({
 	watchedPaths: [__dirname]
 });
 
-weka.registerTrigger(WekaHttp);
+weka.registerTrigger(new WekaHttp());
 weka.registerFuncFromPath("./funcs/greeter");

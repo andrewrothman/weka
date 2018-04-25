@@ -3,15 +3,18 @@ import * as path from "path";
 import { Watcher } from "@src/watcher";
 import FunctionStore, { WekaFuncMeta, WekaFuncHandler, WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "@src/func_store";
 
+export interface WekaTriggerAttachInfo {
+	triggerName: string;
+}
+
 export interface WekaEvent {
 	trigger: string;
 	function: string;
 	args: { [key: string]: any };
 }
 
-export type WekaTrigDef<Context> = any & {
-	name: string;
-	setup: (weka: Weka<Context>, options: { [key: string]: any }) => object | undefined;
+export type WekaTrigDef<Context> = {
+	attach(weka: Weka<Context>): WekaTriggerAttachInfo;
 };
 
 export type WekaPreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
@@ -93,15 +96,17 @@ export default class Weka<Context> {
 		this.funcStore.removeFunction(funcName);
 	}
 	
-	public registerTrigger(trigger: WekaTrigDef<Context>, options: { [key: string]: any } = {}) {
-		if (typeof trigger.name !== "string") {
+	public registerTrigger(trigger: WekaTrigDef<Context>) {
+		// todo: validate that "attach" exists
+		
+		const attachInfo: WekaTriggerAttachInfo = trigger.attach(this);
+		const triggerName: string = attachInfo.triggerName;
+		
+		if (typeof triggerName !== "string") {
 			throw new Error("weka trigger registration \"name\" field must be a string");
 		}
 		
-		const returnValue = trigger.setup.apply(trigger, [this, options]);
-		this.trigs[trigger.name] = trigger;
-		
-		return returnValue;
+		this.trigs[triggerName] = trigger;
 	}
 	
 	public async invoke(event: WekaEvent) {
