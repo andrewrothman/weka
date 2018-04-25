@@ -17,7 +17,7 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 	private port: number = DEFAULT_HTTP_PORT;
 	
 	constructor(weka: Weka<Context>, options?: WekaHttpOptions) {
-		this.port = (options || {}).port || this.port;
+		this.port = Number.parseInt(process.env.WEKA_HTTP_PORT || "") || (options || {}).port || this.port;
 		
 		if (typeof this.port !== "number") {
 			throw new Error("weka-http \"port\" option must be a number");
