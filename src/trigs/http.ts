@@ -11,6 +11,11 @@ export interface WekaHttpOptions {
 	port?: number;
 	healthEndpointEnabled?: boolean;
 	
+	autoExpose?: {
+		enabled?: boolean;
+		pathPrefix?: string;
+	}
+	
 	bodyParser?: {
 		formLimit?: string;
 		jsonLimit?: string;
@@ -28,6 +33,9 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 	private bodyParserJsonLimit: string = "1mb";
 	private bodyParserStrict: boolean = true;
 	
+	private autoExposeEnabled: boolean = true;
+	private autoExposePathPrefix: string = "/functions";
+	
 	constructor(weka: Weka<Context>, options?: WekaHttpOptions) {
 		this.port = Number.parseInt(process.env.WEKA_HTTP_PORT || "") || (options || {}).port || this.port;
 		
@@ -38,6 +46,16 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 		if (options !== undefined) {
 			if (options.healthEndpointEnabled === false) {
 				this.healthEndpointEnabled = false;
+			}
+			
+			if (typeof options.autoExpose !== "undefined") {
+				if (typeof options.autoExpose.enabled !== "undefined") {
+					this.autoExposeEnabled = options.autoExpose.enabled;
+				}
+				
+				if (typeof options.autoExpose.pathPrefix !== "undefined") {
+					this.autoExposePathPrefix = options.autoExpose.pathPrefix;
+				}
 			}
 			
 			if (options.bodyParser !== undefined) {
@@ -56,6 +74,77 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 		}
 		
 		this.app = new Koa();
+	}
+	
+	private parsePathAndCompare(p1: string, p2: string): { values: { [key: string]: any }, doesMatch: boolean } {
+		const keys: pathToRegexp.Key[] = [];
+		const regexp: RegExp = pathToRegexp(p1, keys);
+		const doesMatch: boolean = p2.match(regexp) !== null;
+		
+		const regexpValues: { [key: string]: any } = doesMatch ? regexp.exec(p2)! : {};
+		const values: { [key: string]: any } = {};
+
+		if (regexpValues !== undefined) {
+			for (let i = 0; i < keys.length; i++) {
+				const reqPathKey: pathToRegexp.Key = keys[i];
+				values[reqPathKey.name] = regexpValues[i + 1];
+			}
+		}
+
+		return {
+			values,
+			doesMatch
+		};
+	}
+	
+	private collectArgs(urlValues: { [ key: string]: any }, ctx: Koa.Context): { [key: string]: any } {
+		let args: { [key: string]: any } = {};
+		
+		// merge in body params
+		
+		args = { ...args, ...urlValues };
+		
+		// merge in query params
+		
+		args = { ...args, ...ctx.query };
+
+		// merge in body parser params (if correct content-type specified)
+
+		if (ctx.get("content-type") === "application/json" || ctx.get("content-type") === "application/x-www-form-urlencoded") {
+			args = { ...args, ...ctx.request.body };
+		}
+		
+		return args;
+	}
+	
+	private respond(funcRes: any, ctx: Koa.Context) {
+		if (typeof funcRes === "string") {
+			ctx.body = funcRes;
+		}
+		else if (typeof funcRes === "object") {
+			ctx.status = funcRes.statusCode || 200;
+
+			let headers: { [key: string]: string } = {};
+			let bodyStr: string = "{}";
+
+			if (typeof funcRes.body === "object") {
+				bodyStr = JSON.stringify(funcRes.body);
+				headers["Content-Type"] = "application/json";
+			}
+			else {
+				// todo: might not be string serializable
+			}
+
+			headers = { ...headers, ...(funcRes.headers || {}) };
+			ctx.body = funcRes.body || "{}";
+
+			for (const [headerName, headerValue] of Object.entries(headers)) {
+				ctx.set(headerName, headerValue);
+			}
+		}
+		else {
+			throw new Error(`weka http function return should be either a string or object, but received type "${typeof funcRes}"`);
+		}
 	}
 	
 	public attach(weka: Weka<Context>): WekaTriggerAttachInfo {
@@ -83,33 +172,14 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 
 				const funcHttpMethod: string = (funcDef.meta.http.method || "").toLowerCase();
 				const funcHttpPath: string = (funcDef.meta.http.path || "");
+				
+				const reqHttpPath: string = ctx.request.url.split("?")[0];
+				
+				const funcDefMatch = this.parsePathAndCompare(funcHttpPath, reqHttpPath);
+				const autoExposeMatch = this.parsePathAndCompare(this.autoExposePathPrefix + "/" + funcDef.meta.name, reqHttpPath);
 
-				const reqPathKeys: pathToRegexp.Key[] = [];
-				const reqPathRegex = pathToRegexp(funcHttpPath, reqPathKeys);
-
-				const reqHttpPath = ctx.request.url;
-
-				if (reqHttpPath.match(reqPathRegex)) {
-					const reqPathValues = reqPathRegex.exec(reqHttpPath)!;
-
-					let args: { [key: string]: any } = {};
-					
-					// pull in path params
-
-					for (let i = 0; i < reqPathKeys.length; i++) {
-						const reqPathKey: pathToRegexp.Key = reqPathKeys[i];
-						args[reqPathKey.name] = reqPathValues[i + 1];
-					}
-					
-					// merge in query params
-					
-					args = { ...args, ...ctx.query };
-					
-					// merge in body parser params (if correct content-type specified)
-					
-					if (ctx.get("content-type") === "application/json" || ctx.get("content-type") === "application/x-www-form-urlencoded") {
-						args = { ...args, ...ctx.request.body };
-					}
+				if (funcDefMatch.doesMatch) {
+					const args = this.collectArgs(funcDefMatch.values, ctx);
 
 					const funcRes = await weka.invoke({
 						trigger: TRIGGER_NAME,
@@ -117,39 +187,25 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 						args
 					});
 
-					if (typeof funcRes === "string") {
-						ctx.body = funcRes;
-					}
-					else if (typeof funcRes === "object") {
-						ctx.status = funcRes.statusCode || 200;
-
-						let headers: { [key: string]: string } = {};
-						let bodyStr: string = "{}";
-
-						if (typeof funcRes.body === "object") {
-							bodyStr = JSON.stringify(funcRes.body);
-							headers["Content-Type"] = "application/json";
-						}
-						else {
-							// todo: might not be string serializable
-						}
-
-						headers = { ...headers, ...(funcRes.headers || {}) };
-						ctx.body = funcRes.body || "{}";
-
-						for (const [headerName, headerValue] of Object.entries(headers)) {
-							ctx.set(headerName, headerValue);
-						}
-
-						return;
-					}
-					else {
-						throw new Error(`weka http function return should be either a string or object, but received type "${typeof funcRes}"`);
-					}
+					this.respond(funcRes, ctx);
+					return;
+				}
+				
+				if (this.autoExposeEnabled && autoExposeMatch.doesMatch) {
+					const args = this.collectArgs(autoExposeMatch.values, ctx);
+					
+					const funcRes = await weka.invoke({
+						trigger: TRIGGER_NAME,
+						function: funcDef.meta.name,
+						args
+					});
+					
+					this.respond(funcRes, ctx);
+					return;
 				}
 			}
 		});
-
+		
 		this.app.listen(this.port);
 		console.log(`weka-http listening on port ${this.port}...`);
 		
