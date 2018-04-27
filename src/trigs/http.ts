@@ -166,12 +166,8 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 			}
 
 			for (const funcDef of weka.getAllFunctions()) {
-				if (typeof funcDef.meta.http !== "object") {
-					continue;
-				}
-
-				const funcHttpMethod: string = (funcDef.meta.http.method || "").toLowerCase();
-				const funcHttpPath: string = (funcDef.meta.http.path || "");
+				const funcHttpMethod: string = ((funcDef.meta.http || {}).method || "").toLowerCase();
+				const funcHttpPath: string = ((funcDef.meta.http || {}).path || "");
 				
 				const reqHttpPath: string = ctx.request.url.split("?")[0];
 				
@@ -191,7 +187,7 @@ export default class WekaHttp<Context> implements WekaTrigDef<Context> {
 					return;
 				}
 				
-				if (this.autoExposeEnabled && autoExposeMatch.doesMatch) {
+				if (this.autoExposeEnabled && autoExposeMatch.doesMatch && (funcHttpMethod === "" || funcHttpMethod === ctx.method.toLowerCase()) && funcHttpPath === "") {
 					const args = this.collectArgs(autoExposeMatch.values, ctx);
 					
 					const funcRes = await weka.invoke({
