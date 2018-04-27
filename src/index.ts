@@ -118,6 +118,14 @@ export default class Weka<Context> {
 		this.trigs[triggerName] = trigger;
 	}
 	
+	public unregisterTrigger(triggerName: string) {
+		if (this.trigs[triggerName] === undefined) {
+			throw new Error(`weka could not remove trigger named "${triggerName}" because it was not found in the trigger store`);
+		}
+
+		delete this.trigs[triggerName];
+	}
+	
 	public async invoke(event: WekaEvent) {
 		if (typeof event.trigger !== "string") {
 			throw new Error("weka event invocation \"trigger\" field must be a string");
