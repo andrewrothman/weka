@@ -32,9 +32,15 @@ export default class FunctionStore<Context> {
 		// todo: ensure the func def does not exist
 	}
 	
-	public updateFunction(funcDef: InternalWekaFunctionDef<Context>) {
+	public updateFunction(originalName: string, funcDef: InternalWekaFunctionDef<Context>) {
 		const name = funcDef.meta.name;
 		this.funcs[name] = funcDef;
+		
+		// if the name changed, then remove the old function
+		
+		if (name !== originalName) {
+			delete this.funcs[originalName];
+		}
 		
 		// todo: ensure the func def exists
 	}
@@ -97,9 +103,7 @@ export default class FunctionStore<Context> {
 			handler: FunctionStore.getFunctionHandlerFromDef(newFuncDef)
 		};
 
-		// todo: deal with meta.name changes
-
-		this.updateFunction(internalFucDef);
+		this.updateFunction(funcDef.meta.name, internalFucDef);
 	}
 	
 	public burstAllFunctions(): void {
