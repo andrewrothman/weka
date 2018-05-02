@@ -1,10 +1,5 @@
-export declare type WekaFuncResult = any;
-export declare type WekaFuncMeta = {
-    name: string;
-} & {
-    [key: string]: any;
-};
-export declare type WekaFuncHandler<Context> = (event: WekaEvent, ctx: Context) => WekaFuncResult | Promise<WekaFuncResult>;
+import { WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "@src/func_store";
+import { WekaTriggerDef } from "@src/trig_store";
 export interface WekaEvent {
     trigger: string;
     function: string;
@@ -12,33 +7,27 @@ export interface WekaEvent {
         [key: string]: any;
     };
 }
-export interface WekaFuncDef<Context> {
-    meta: WekaFuncMeta;
-    handler: WekaFuncHandler<Context>;
-}
-export interface WekaFuncDefES6<Context> {
-    meta: WekaFuncMeta;
-    default: WekaFuncHandler<Context>;
-}
-export declare type WekaTrigDef<Context> = any & {
-    name: string;
-    setup: (weka: Weka<Context>, options: {
-        [key: string]: any;
-    }) => object | undefined;
-};
 export declare type WekaPreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
+export interface WekaOptions {
+    watchedPaths?: string[];
+    hotReloadEnabled?: boolean;
+}
 export default class Weka<Context> {
-    readonly funcs: {
-        [key: string]: WekaFuncDef<Context>;
-    };
-    readonly trigs: {
-        [key: string]: WekaTrigDef<Context>;
-    };
+    private funcStore;
+    private trigStore;
     private preInvokeHandlers;
+    private watcher;
+    private hotReloadEnabled;
+    constructor(options?: WekaOptions);
     registerFunction(funcDef: WekaFuncDef<Context> | WekaFuncDefES6<Context>): void;
-    registerTrigger(trigger: WekaTrigDef<Context>, options?: {
-        [key: string]: any;
-    }): any;
+    registerFuncFromPath(filePath: string, shouldWatch?: boolean): void;
+    registerFuncsFromDirectoryPath(dirPath: string, shouldWatch?: boolean): void;
+    unregisterFunction(funcName: string): void;
+    registerTrigger(trigger: WekaTriggerDef<Context>): void;
+    unregisterTrigger(triggerName: string): void;
     invoke(event: WekaEvent): Promise<any>;
+    runPreInvokeHandlers(event: WekaEvent, context: Context): Promise<boolean>;
     addPreInvokeHandler(handler: WekaPreInvokeHandler<Context>): void;
+    private onWatchedPathChanged(eventType, changedPath);
+    getAllFunctions(): InternalWekaFunctionDef<Context>[];
 }

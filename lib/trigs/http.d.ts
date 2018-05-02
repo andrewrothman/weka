@@ -1,11 +1,31 @@
-/// <reference types="koa" />
 import Weka from "@src";
-import * as Koa from "koa";
-declare const _default: {
-    name: string;
-    app: Koa;
-    setup(weka: Weka<any>, options: {
-        [key: string]: any;
-    }): object;
-};
-export default _default;
+import { WekaTriggerDef, WekaTriggerAttachInfo } from "@src/trig_store";
+export interface WekaHttpOptions {
+    port?: number;
+    healthEndpointEnabled?: boolean;
+    autoExpose?: {
+        enabled?: boolean;
+        pathPrefix?: string;
+    };
+    bodyParser?: {
+        formLimit?: string;
+        jsonLimit?: string;
+        strict?: boolean;
+    };
+}
+export default class WekaHttp<Context> implements WekaTriggerDef<Context> {
+    private app;
+    private healthEndpointEnabled;
+    private port;
+    private enabledTypes;
+    private bodyParserFormLimit;
+    private bodyParserJsonLimit;
+    private bodyParserStrict;
+    private autoExposeEnabled;
+    private autoExposePathPrefix;
+    constructor(weka: Weka<Context>, options?: WekaHttpOptions);
+    private parsePathAndCompare(p1, p2);
+    private collectArgs(urlValues, ctx);
+    private respond(funcRes, ctx);
+    attach(weka: Weka<Context>): WekaTriggerAttachInfo;
+}

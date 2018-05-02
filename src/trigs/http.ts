@@ -1,4 +1,5 @@
-import Weka, { WekaTrigDef, WekaTriggerAttachInfo } from "@src";
+import Weka from "@src";
+import { WekaTriggerDef, WekaTriggerAttachInfo } from "@src/trig_store";
 import * as Koa from "koa";
 import * as pathToRegexp from "path-to-regexp";
 import * as bodyParser from "koa-bodyparser";
@@ -23,7 +24,7 @@ export interface WekaHttpOptions {
 	}
 }
 
-export default class WekaHttp<Context> implements WekaTrigDef<Context> {
+export default class WekaHttp<Context> implements WekaTriggerDef<Context> {
 	private app: Koa;
 	
 	private healthEndpointEnabled: boolean = true;
