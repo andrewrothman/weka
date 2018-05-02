@@ -1,5 +1,5 @@
-import { WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "@src/func_store";
-import { WekaTriggerDef } from "@src/trig_store";
+import { WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "./func_store";
+import { WekaTriggerDef } from "./trig_store";
 export interface WekaEvent {
     trigger: string;
     function: string;

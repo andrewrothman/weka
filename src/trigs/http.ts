@@ -1,5 +1,5 @@
-import Weka from "@src";
-import { WekaTriggerDef, WekaTriggerAttachInfo } from "@src/trig_store";
+import Weka from "../";
+import { WekaTriggerDef, WekaTriggerAttachInfo } from "../trig_store";
 import * as Koa from "koa";
 import * as pathToRegexp from "path-to-regexp";
 import * as bodyParser from "koa-bodyparser";

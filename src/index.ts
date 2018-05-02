@@ -1,9 +1,9 @@
 import * as callsite from "callsite";
 import * as path from "path";
 import * as fs from "fs";
-import { Watcher } from "@src/watcher";
-import FunctionStore, { WekaFuncMeta, WekaFuncHandler, WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "@src/func_store";
-import TriggerStore, { WekaTriggerDef, WekaTriggerAttachInfo } from "@src/trig_store";
+import { Watcher } from "./watcher";
+import FunctionStore, { WekaFuncMeta, WekaFuncHandler, WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "./func_store";
+import TriggerStore, { WekaTriggerDef, WekaTriggerAttachInfo } from "./trig_store";
 import { EMSGSIZE } from "constants";
 
 export interface WekaEvent {

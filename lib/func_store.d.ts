@@ -1,4 +1,4 @@
-import { WekaEvent } from "@src";
+import { WekaEvent } from "./";
 export declare type WekaFuncResult = any;
 export declare type WekaFuncMeta = {
     name: string;

@@ -1,5 +1,5 @@
-import Weka from "@src";
-import { WekaTriggerDef, WekaTriggerAttachInfo } from "@src/trig_store";
+import Weka from "../";
+import { WekaTriggerDef, WekaTriggerAttachInfo } from "../trig_store";
 export interface WekaHttpOptions {
     port?: number;
     healthEndpointEnabled?: boolean;

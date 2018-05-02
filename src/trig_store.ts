@@ -1,4 +1,4 @@
-import Weka from "@src";
+import Weka from "./";
 
 export interface WekaTriggerAttachInfo {
 	triggerName: string;
