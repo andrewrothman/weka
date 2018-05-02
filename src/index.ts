@@ -1,20 +1,15 @@
 import * as callsite from "callsite";
 import * as path from "path";
+import * as fs from "fs";
 import { Watcher } from "@src/watcher";
 import FunctionStore, { WekaFuncMeta, WekaFuncHandler, WekaFuncDef, WekaFuncDefES6, InternalWekaFunctionDef } from "@src/func_store";
-
-export interface WekaTriggerAttachInfo {
-	triggerName: string;
-}
+import TriggerStore, { WekaTriggerDef, WekaTriggerAttachInfo } from "@src/trig_store";
+import { EMSGSIZE } from "constants";
 
 export interface WekaEvent {
 	trigger: string;
 	function: string;
 	args: { [key: string]: any };
-}
-
-export interface WekaTrigDef<Context> {
-	attach(weka: Weka<Context>): WekaTriggerAttachInfo;
 }
 
 export type WekaPreInvokeHandler<Context> = (event: WekaEvent, context: Context) => boolean | Promise<boolean>;
@@ -25,10 +20,11 @@ export interface WekaOptions {
 }
 
 export default class Weka<Context> {
-	private trigs: { [key: string]: WekaTrigDef<Context> } = {};
+	private funcStore: FunctionStore<Context> = new FunctionStore();
+	private trigStore: TriggerStore<Context> = new TriggerStore();
+	
 	private preInvokeHandlers: WekaPreInvokeHandler<Context>[] = [];
 	
-	private funcStore: FunctionStore<Context> = new FunctionStore();
 	private watcher: Watcher = new Watcher({ onWatchedPathChanged: this.onWatchedPathChanged.bind(this) });
 	
 	private hotReloadEnabled: boolean = process.env.NODE_ENV === undefined || process.env.NODE_ENV === "" || process.env.NODE_ENV === "development";
@@ -76,14 +72,20 @@ export default class Weka<Context> {
 		// todo: ensure the path points to a single file
 
 		const stack = callsite();
-		const requester = stack[1].getFileName();
+		const requester: string = stack[1].getFileName();
 
 		const finalModulePath: string = path.resolve(path.dirname(requester), filePath);
 		const finalFilePath: string = require.resolve(finalModulePath);
+		
+		const stat = fs.statSync(finalFilePath);
+
+		if (!stat.isFile) {
+			throw new Error("weka could not register file path because path wasn't a file: " + finalModulePath);
+		}
 
 		const funcDef = require(finalModulePath);
 		
-		if (this.hotReloadEnabled) {
+		if (this.hotReloadEnabled && shouldWatch) {
 			this.watcher.startWatchingPaths([finalFilePath]);
 		}
 
@@ -97,33 +99,44 @@ export default class Weka<Context> {
 		this.funcStore.addFunction(internalFuncDef);
 	}
 
-	public registerFuncsFromPath(dirPath: string, shouldWatch: boolean = true): void {
+	public registerFuncsFromDirectoryPath(dirPath: string, shouldWatch: boolean = true): void {
 		// todo: ensure the path points to a directory
+		
+		const stack = callsite();
+		const requester: string = stack[1].getFileName();
+		
+		const finalDirPath: string = path.join(requester, "../", dirPath);
+		
+		const stat = fs.statSync(finalDirPath);
+		
+		if (!stat.isDirectory) {
+			throw new Error("weka could not register directory path because path wasn't a directory: " + finalDirPath);
+		}
+		
+		const files = fs.readdirSync(finalDirPath);
+		
+		for (const fileName of files) {
+			this.registerFuncFromPath(path.join(finalDirPath, fileName), false);
+		}
+		
+		if (shouldWatch && this.hotReloadEnabled) {
+			this.watcher.startWatchingPaths([finalDirPath + "/**"]);
+		}
 	}
 	
 	public unregisterFunction(funcName: string) {
 		this.funcStore.removeFunction(funcName);
 	}
 	
-	public registerTrigger(trigger: WekaTrigDef<Context>) {
+	public registerTrigger(trigger: WekaTriggerDef<Context>) {
 		// todo: validate that "attach" exists
-		
+
 		const attachInfo: WekaTriggerAttachInfo = trigger.attach(this);
-		const triggerName: string = attachInfo.triggerName;
-		
-		if (typeof triggerName !== "string") {
-			throw new Error("weka trigger registration \"name\" field must be a string");
-		}
-		
-		this.trigs[triggerName] = trigger;
+		this.trigStore.registerTrigger(trigger, attachInfo);
 	}
 	
 	public unregisterTrigger(triggerName: string) {
-		if (this.trigs[triggerName] === undefined) {
-			throw new Error(`weka could not remove trigger named "${triggerName}" because it was not found in the trigger store`);
-		}
-
-		delete this.trigs[triggerName];
+		this.trigStore.unregisterTrigger(triggerName);
 	}
 	
 	public async invoke(event: WekaEvent) {

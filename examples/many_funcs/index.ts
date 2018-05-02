@@ -8,4 +8,4 @@ const weka = new Weka({
 });
 
 weka.registerTrigger(new WekaHttp());
-weka.registerFuncFromPath("./funcs/greeter");
+weka.registerFuncsFromDirectoryPath("./funcs");

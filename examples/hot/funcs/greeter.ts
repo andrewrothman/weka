@@ -1,6 +1,6 @@
 import { WekaEvent } from "@src";
 
-import coolNumber from "./cool_number";
+import coolNumber from "../cool_number";
 
 export const meta = {
 	name: "greeter",
