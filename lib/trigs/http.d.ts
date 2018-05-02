@@ -23,7 +23,7 @@ export default class WekaHttp<Context> implements WekaTriggerDef<Context> {
     private bodyParserStrict;
     private autoExposeEnabled;
     private autoExposePathPrefix;
-    constructor(weka: Weka<Context>, options?: WekaHttpOptions);
+    constructor(options?: WekaHttpOptions);
     private parsePathAndCompare(p1, p2);
     private collectArgs(urlValues, ctx);
     private respond(funcRes, ctx);

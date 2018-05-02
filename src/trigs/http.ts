@@ -37,7 +37,7 @@ export default class WekaHttp<Context> implements WekaTriggerDef<Context> {
 	private autoExposeEnabled: boolean = true;
 	private autoExposePathPrefix: string = "/functions";
 	
-	constructor(weka: Weka<Context>, options?: WekaHttpOptions) {
+	constructor(options?: WekaHttpOptions) {
 		this.port = Number.parseInt(process.env.WEKA_HTTP_PORT || "") || (options || {}).port || this.port;
 		
 		if (typeof this.port !== "number") {
